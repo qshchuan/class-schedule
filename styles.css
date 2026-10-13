@@ -85,6 +85,10 @@ main { padding: 0 16px 34px; }
 .adjustment-card { display: flex; gap: 12px; padding: 16px; background: #fff5eb; border: 1px solid #f0c8a5; border-radius: 17px; }
 .adjustment-card > span { align-self: flex-start; padding: 4px 7px; color: white; background: var(--orange); border-radius: 6px; font-size: .68rem; font-weight: 800; }
 .adjustment-card p { margin: 5px 0 0; color: var(--muted); font-size: .8rem; }
+.map-section__hint { margin: -5px 0 13px; color: var(--muted); font-size: .82rem; line-height: 1.6; }
+.campus-map { position: relative; display: block; overflow: hidden; color: white; background: #dfe6df; border: 1px solid rgba(31, 59, 86, .1); border-radius: 20px; box-shadow: var(--shadow); }
+.campus-map img { display: block; width: 100%; height: auto; }
+.campus-map span { position: absolute; right: 12px; bottom: 12px; padding: 7px 11px; background: rgba(24, 52, 81, .88); border-radius: 999px; font-size: .72rem; font-weight: 800; backdrop-filter: blur(8px); }
 footer { padding: 27px 20px calc(34px + env(safe-area-inset-bottom)); color: #8b97a4; text-align: center; background: #e9edf0; font-size: .76rem; }
 footer p { margin: 4px; }
 

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#315f92" />
+    <meta name="description" content="班级课程查询：今日、明日与本周课程安排" />
+    <title>班级课程查询</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero__orb hero__orb--one"></div>
+        <div class="hero__orb hero__orb--two"></div>
+        <div class="hero__content">
+          <p class="eyebrow">CLASS SCHEDULE</p>
+          <h1>班级课程查询</h1>
+          <p id="today-label" class="hero__date"></p>
+          <div id="status-card" class="status-card"></div>
+        </div>
+      </header>
+
+      <main>
+        <section class="notice" aria-label="重要提示">
+          <span class="notice__icon" aria-hidden="true">!</span>
+          <div>
+            <strong>临时通知以班群和教师通知为准</strong>
+            <p>本页仅整理已提前确认的安排，不是官方教务系统或紧急通知工具。</p>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="today-heading">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">TODAY</p>
+              <h2 id="today-heading">今日课程</h2>
+            </div>
+            <span id="today-count" class="count-badge"></span>
+          </div>
+          <div id="today-list" class="course-list"></div>
+        </section>
+
+        <section class="section" aria-labelledby="tomorrow-heading">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">TOMORROW</p>
+              <h2 id="tomorrow-heading">明日预览</h2>
+            </div>
+            <span id="tomorrow-date" class="date-chip"></span>
+          </div>
+          <div id="tomorrow-list" class="course-list"></div>
+        </section>
+
+        <section class="section week-section" aria-labelledby="week-heading">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">THIS WEEK</p>
+              <h2 id="week-heading">本周课表</h2>
+            </div>
+            <span id="week-range" class="date-chip"></span>
+          </div>
+          <div id="week-tabs" class="week-tabs" role="tablist"></div>
+          <div id="week-panel" class="week-panel"></div>
+        </section>
+
+        <section id="adjustments-section" class="section adjustments-section" aria-labelledby="adjustments-heading">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">CHANGES</p>
+              <h2 id="adjustments-heading">已知课程调整</h2>
+            </div>
+          </div>
+          <div id="adjustments-list"></div>
+        </section>
+      </main>
+
+      <footer>
+        <p>最近更新于 <time id="last-updated"></time></p>
+        <p>建议收藏此页面，方便随时查询。</p>
+      </footer>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

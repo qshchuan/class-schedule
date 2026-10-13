@@ -71,8 +71,21 @@ function renderWeek(now) {
 }
 function renderAdjustments(now) { const container = document.querySelector("#adjustments-list"); const upcoming = scheduleData.adjustments.filter((item) => parseLocalDate(item.date) >= new Date(now.getFullYear(), now.getMonth(), now.getDate())); if (!upcoming.length) { const box = el("div", "no-adjustments"); box.append(el("span", "", "暂无"), el("p", "", "目前没有已提前确认的课程调整。")); container.replaceChildren(box); return; } container.replaceChildren(...upcoming.map((item) => { const card = el("article", "adjustment-card"); const detail = el("div"); detail.append(el("strong", "", item.title), el("p", "", item.description)); card.append(el("span", "", "已调整"), detail); return card; })); }
 function resolveNow() { const allowed = ["localhost", "127.0.0.1"].includes(window.location.hostname); const debugDate = allowed ? new URLSearchParams(window.location.search).get("debugDate") : null; const parsed = debugDate ? new Date(debugDate) : new Date(); return Number.isNaN(parsed.getTime()) ? new Date() : parsed; }
+function renderDashboard(now) {
+  const tomorrow = addDays(now, 1); const todayCourses = coursesOn(now); const tomorrowCourses = coursesOn(tomorrow); document.querySelector("#today-label").textContent = formatFullDate(now); document.querySelector("#today-count").textContent = `${todayCourses.length} 门课`; document.querySelector("#tomorrow-date").textContent = `${formatShortDate(tomorrow)} ${WEEKDAYS[tomorrow.getDay()]}`; renderStatus(now, todayCourses); renderCourseList(document.querySelector("#today-list"), todayCourses, "今天没有课程", "放松一下，或者提前准备明天的课程。"); renderCourseList(document.querySelector("#tomorrow-list"), tomorrowCourses, "明天没有课程", "目前没有查到明日课程安排。"); renderWeek(now); renderAdjustments(now); const updated = new Date(scheduleData.lastUpdated); document.querySelector("#last-updated").textContent = `${updated.getFullYear()}年${updated.getMonth() + 1}月${updated.getDate()}日 ${pad(updated.getHours())}:${pad(updated.getMinutes())}`;
+}
+function startLiveUpdates(initialNow) {
+  let renderedDateKey = toDateKey(initialNow);
+  const refresh = () => {
+    const now = resolveNow(); const currentDateKey = toDateKey(now);
+    if (currentDateKey !== renderedDateKey) { renderDashboard(now); renderedDateKey = currentDateKey; return; }
+    renderStatus(now, coursesOn(now));
+  };
+  window.setInterval(refresh, 60_000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+}
 async function init() {
-  try { await loadScheduleData(); } catch (error) { scheduleData = FALLBACK_DATA; console.warn("Using built-in schedule data because external data files are unavailable.", error); } const now = resolveNow(); const tomorrow = addDays(now, 1); const todayCourses = coursesOn(now); const tomorrowCourses = coursesOn(tomorrow); document.querySelector("#today-label").textContent = formatFullDate(now); document.querySelector("#today-count").textContent = `${todayCourses.length} 门课`; document.querySelector("#tomorrow-date").textContent = `${formatShortDate(tomorrow)} ${WEEKDAYS[tomorrow.getDay()]}`; renderStatus(now, todayCourses); renderCourseList(document.querySelector("#today-list"), todayCourses, "今天没有课程", "放松一下，或者提前准备明天的课程。"); renderCourseList(document.querySelector("#tomorrow-list"), tomorrowCourses, "明天没有课程", "目前没有查到明日课程安排。"); renderWeek(now); renderAdjustments(now); const updated = new Date(scheduleData.lastUpdated); document.querySelector("#last-updated").textContent = `${updated.getFullYear()}年${updated.getMonth() + 1}月${updated.getDate()}日 ${pad(updated.getHours())}:${pad(updated.getMinutes())}`;
+  try { await loadScheduleData(); } catch (error) { scheduleData = FALLBACK_DATA; console.warn("Using built-in schedule data because external data files are unavailable.", error); } const now = resolveNow(); renderDashboard(now); startLiveUpdates(now);
 }
 if (typeof document !== "undefined") init();
 export { getStatusState, getWeekStart, normalizeCourse, normalizeCourses, parseCsv, toDateKey };

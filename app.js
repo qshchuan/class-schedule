@@ -52,40 +52,81 @@ async function loadScheduleData() {
   if (!configResponse.ok || !coursesResponse.ok || !adjustmentsResponse.ok) throw new Error("课程数据加载失败"); const config = await configResponse.json();
   scheduleData = { className: cleanText(config.className, 80), notice: cleanText(config.notice, 300), lastUpdated: Number.isNaN(new Date(config.lastUpdated).getTime()) ? FALLBACK_DATA.lastUpdated : config.lastUpdated, courses: normalizeCourses(parseCsv(await coursesResponse.text())), adjustments: parseCsv(await adjustmentsResponse.text()).map(normalizeAdjustment).filter(Boolean).slice(0, 100) };
 }
-const coursesOn = (date) => scheduleData.courses.filter((course) => course.date === toDateKey(date)).sort(byTime);
+const baseCoursesOn = (date) => scheduleData.courses.filter((course) => course.date === toDateKey(date)).sort(byTime);
+function getStudySessions(date, courses = baseCoursesOn(date)) {
+  const dateKey = toDateKey(date);
+  const sessions = [];
+  const firstCourse = courses.find((course) => course.start === "08:00");
+  if (firstCourse) sessions.push({ date: dateKey, start: "07:30", end: "08:00", name: "早自习", room: firstCourse.room || "以通知为准", teacher: "", note: "地点与当天 08:00 课程一致", adjusted: false, study: true });
+  if (![5, 6].includes(date.getDay())) sessions.push({ date: dateKey, start: "19:00", end: "20:40", name: "晚自习", room: "C302", teacher: "", note: "", adjusted: false, study: true });
+  return sessions;
+}
+const arrangementsOn = (date) => [...baseCoursesOn(date), ...getStudySessions(date)].sort(byTime);
 function courseCard(course, compact = false) {
-  const card = el("article", `course-card${course.adjusted ? " course-card--adjusted" : ""}${compact ? " course-card--compact" : ""}`); const time = el("div", "course-time"); time.append(el("strong", "", course.start), el("span", "", course.end));
-  const line = el("div", "course-line"); line.setAttribute("aria-hidden", "true"); line.append(el("span")); const info = el("div", "course-info"); const titleRow = el("div", "course-title-row"); titleRow.append(el("h3", "", course.name)); if (course.adjusted) titleRow.append(el("span", "adjusted-badge", "已调整"));
+  const card = el("article", `course-card${course.adjusted ? " course-card--adjusted" : ""}${course.study ? " course-card--study" : ""}${compact ? " course-card--compact" : ""}`); const time = el("div", "course-time"); time.append(el("strong", "", course.start), el("span", "", course.end));
+  const line = el("div", "course-line"); line.setAttribute("aria-hidden", "true"); line.append(el("span")); const info = el("div", "course-info"); const titleRow = el("div", "course-title-row"); titleRow.append(el("h3", "", course.name)); if (course.adjusted) titleRow.append(el("span", "adjusted-badge", "已调整")); else if (course.study) titleRow.append(el("span", "study-badge", "自习"));
   const room = el("p", "course-room"); const pin = el("span", "", "⌖"); pin.setAttribute("aria-hidden", "true"); room.append(pin, document.createTextNode(course.room)); const meta = el("p", "course-meta"); if (course.teacher) meta.append(document.createTextNode(`教师：${course.teacher}`)); if (course.note) meta.append(el("span", "", course.note)); info.append(titleRow, room, meta); card.append(time, line, info); return card;
 }
 function emptyState(title, description) { const box = el("div", "empty-state"); const icon = el("span", "", "✓"); icon.setAttribute("aria-hidden", "true"); box.append(icon, el("strong", "", title), el("p", "", description)); return box; }
 function renderCourseList(element, courses, emptyTitle, emptyDescription) { element.replaceChildren(...(courses.length ? courses.map((course) => courseCard(course)) : [emptyState(emptyTitle, emptyDescription)])); }
+function renderTodayOverview(element, arrangements) {
+  element.replaceChildren(...(arrangements.length ? arrangements.map((item) => {
+    const card = el("article", `today-card${item.study ? " today-card--study" : ""}`);
+    const time = el("div", "today-card__time");
+    time.append(el("strong", "", item.start), el("span", "", item.end));
+    const timeline = el("div", "today-card__timeline");
+    timeline.append(el("span"));
+    const info = el("div", "today-card__info");
+    const title = el("div", "today-card__title");
+    title.append(el("strong", "", item.name));
+    if (item.study) title.append(el("span", "study-badge", "自习"));
+    const room = el("p", "today-card__room", `⌖ ${item.room}`);
+    const meta = el("p", "today-card__meta");
+    if (item.teacher) meta.append(document.createTextNode(`教师：${item.teacher}`));
+    if (item.note) meta.append(el("span", "", item.note));
+    info.append(title, room);
+    if (meta.childNodes.length) info.append(meta);
+    card.append(time, timeline, info);
+    return card;
+  }) : [emptyState("今天没有安排", "可以自由安排今天的时间。")]));
+}
 function getWeekStart(date) { const result = new Date(date); const day = result.getDay() || 7; result.setDate(result.getDate() - day + 1); result.setHours(0, 0, 0, 0); return result; }
-function getStatusState(now, todayCourses) { const current = todayCourses.find((course) => now >= dateTimeFor(course, "start") && now < dateTimeFor(course, "end")); if (current) return { label: "正在上课", title: current.name, detail: `${current.end} 下课 · ${current.room}`, free: false }; const next = todayCourses.find((course) => now < dateTimeFor(course, "start")); if (next) return { label: "下一节课", title: next.name, detail: `${next.start} 开始 · ${next.room}`, free: true }; return { label: "当前状态", title: todayCourses.length ? "今日课程已结束" : "今天没有课程", detail: todayCourses.length ? "辛苦了，记得查看明日安排" : "可以自由安排今天的时间", free: true }; }
+function getStatusState(now, todayArrangements) { const current = todayArrangements.find((item) => now >= dateTimeFor(item, "start") && now < dateTimeFor(item, "end")); if (current) return { label: current.study ? "正在自习" : "正在上课", title: current.name, detail: `${current.end} 结束 · ${current.room}`, free: false }; const next = todayArrangements.find((item) => now < dateTimeFor(item, "start")); if (next) return { label: next.study ? "下一项安排" : "下一节课", title: next.name, detail: `${next.start} 开始 · ${next.room}`, free: true }; return { label: "当前状态", title: todayArrangements.length ? "今日安排已结束" : "今天没有安排", detail: todayArrangements.length ? "辛苦了，记得查看明日安排" : "可以自由安排今天的时间", free: true }; }
 function renderStatus(now, todayCourses) { const status = getStatusState(now, todayCourses); const dot = el("span", `status-dot${status.free ? " status-dot--free" : ""}`); const content = el("div"); content.append(el("small", "", status.label), el("strong", "", status.title), el("p", "", status.detail)); document.querySelector("#status-card").replaceChildren(dot, content); }
 function renderWeek(now) {
-  const weekStart = getWeekStart(now); const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)); const todayKey = toDateKey(now); const availableDays = weekDays.filter((date) => coursesOn(date).length); let activeKey = availableDays.some((date) => toDateKey(date) === todayKey) ? todayKey : toDateKey(availableDays[0] || weekDays[0]); const tabs = document.querySelector("#week-tabs"); const panel = document.querySelector("#week-panel"); document.querySelector("#week-range").textContent = `${formatShortDate(weekDays[0])}—${formatShortDate(weekDays[6])}`;
-  const renderPanel = () => { const activeDate = parseLocalDate(activeKey); const activeCourses = coursesOn(activeDate); const heading = el("div", "week-panel__heading"); heading.append(el("strong", "", `${formatShortDate(activeDate)} ${WEEKDAYS[activeDate.getDay()]}`), el("span", "", `${activeCourses.length} 门课`)); panel.replaceChildren(heading, ...(activeCourses.length ? activeCourses.map((course) => courseCard(course, true)) : [emptyState("当天没有课程", "可以安排自习或其他活动。")])); };
-  tabs.replaceChildren(...weekDays.map((date) => { const key = toDateKey(date); const count = coursesOn(date).length; const button = el("button", `week-tab${key === activeKey ? " is-active" : ""}${key === todayKey ? " is-today" : ""}`); button.type = "button"; button.dataset.date = key; button.setAttribute("role", "tab"); button.setAttribute("aria-selected", String(key === activeKey)); button.append(el("span", "", WEEKDAYS[date.getDay()].replace("周", "")), el("strong", "", String(date.getDate()))); if (count) button.append(el("i", "", String(count))); return button; }));
+  const weekStart = getWeekStart(now); const weekDays = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)); const todayKey = toDateKey(now); let activeKey = todayKey; const tabs = document.querySelector("#week-tabs"); const panel = document.querySelector("#week-panel"); document.querySelector("#week-range").textContent = `${formatShortDate(weekDays[0])}—${formatShortDate(weekDays[6])}`;
+  const renderPanel = () => { const activeDate = parseLocalDate(activeKey); const activeArrangements = arrangementsOn(activeDate); const heading = el("div", "week-panel__heading"); heading.append(el("strong", "", `${formatShortDate(activeDate)} ${WEEKDAYS[activeDate.getDay()]}`), el("span", "", `${activeArrangements.length} 项安排`)); panel.replaceChildren(heading, ...(activeArrangements.length ? activeArrangements.map((item) => courseCard(item, true)) : [emptyState("当天没有安排", "可以自由安排当天时间。")])); };
+  tabs.replaceChildren(...weekDays.map((date) => { const key = toDateKey(date); const count = arrangementsOn(date).length; const button = el("button", `week-tab${key === activeKey ? " is-active" : ""}${key === todayKey ? " is-today" : ""}`); button.type = "button"; button.dataset.date = key; button.setAttribute("role", "tab"); button.setAttribute("aria-selected", String(key === activeKey)); button.append(el("span", "", WEEKDAYS[date.getDay()].replace("周", "")), el("strong", "", String(date.getDate()))); if (count) button.append(el("i", "", String(count))); return button; }));
   tabs.onclick = (event) => { const button = event.target.closest("button[data-date]"); if (!button) return; activeKey = button.dataset.date; tabs.querySelectorAll("button").forEach((tab) => { const active = tab.dataset.date === activeKey; tab.classList.toggle("is-active", active); tab.setAttribute("aria-selected", String(active)); }); renderPanel(); }; renderPanel();
 }
 function renderAdjustments(now) { const container = document.querySelector("#adjustments-list"); const upcoming = scheduleData.adjustments.filter((item) => parseLocalDate(item.date) >= new Date(now.getFullYear(), now.getMonth(), now.getDate())); if (!upcoming.length) { const box = el("div", "no-adjustments"); box.append(el("span", "", "暂无"), el("p", "", "目前没有已提前确认的课程调整。")); container.replaceChildren(box); return; } container.replaceChildren(...upcoming.map((item) => { const card = el("article", "adjustment-card"); const detail = el("div"); detail.append(el("strong", "", item.title), el("p", "", item.description)); card.append(el("span", "", "已调整"), detail); return card; })); }
-function resolveNow() { const allowed = ["localhost", "127.0.0.1"].includes(window.location.hostname); const debugDate = allowed ? new URLSearchParams(window.location.search).get("debugDate") : null; const parsed = debugDate ? new Date(debugDate) : new Date(); return Number.isNaN(parsed.getTime()) ? new Date() : parsed; }
-function renderDashboard(now) {
-  const tomorrow = addDays(now, 1); const todayCourses = coursesOn(now); const tomorrowCourses = coursesOn(tomorrow); document.querySelector("#today-label").textContent = formatFullDate(now); document.querySelector("#today-count").textContent = `${todayCourses.length} 门课`; document.querySelector("#tomorrow-date").textContent = `${formatShortDate(tomorrow)} ${WEEKDAYS[tomorrow.getDay()]}`; renderStatus(now, todayCourses); renderCourseList(document.querySelector("#today-list"), todayCourses, "今天没有课程", "放松一下，或者提前准备明天的课程。"); renderCourseList(document.querySelector("#tomorrow-list"), tomorrowCourses, "明天没有课程", "目前没有查到明日课程安排。"); renderWeek(now); renderAdjustments(now); const updated = new Date(scheduleData.lastUpdated); document.querySelector("#last-updated").textContent = `${updated.getFullYear()}年${updated.getMonth() + 1}月${updated.getDate()}日 ${pad(updated.getHours())}:${pad(updated.getMinutes())}`;
+function createClock({ hostname = "", search = "", now = () => Date.now() } = {}) {
+  const localDebug = ["localhost", "127.0.0.1"].includes(hostname);
+  const params = new URLSearchParams(localDebug ? search : "");
+  const debugDate = params.get("debugDate");
+  const parsed = debugDate ? new Date(debugDate) : null;
+  const speed = Number(params.get("debugSpeed"));
+  if (!parsed || Number.isNaN(parsed.getTime())) return { current: () => new Date(now()), refreshInterval: 60_000 };
+  if (!Number.isFinite(speed) || speed <= 0) return { current: () => new Date(parsed), refreshInterval: 60_000 };
+  const realStart = now();
+  const simulatedStart = parsed.getTime();
+  return { current: () => new Date(simulatedStart + (now() - realStart) * speed), refreshInterval: Math.max(100, Math.min(1_000, Math.floor(60_000 / speed))) };
 }
-function startLiveUpdates(initialNow) {
+function renderDashboard(now) {
+  const tomorrow = addDays(now, 1); const todayArrangements = arrangementsOn(now); const tomorrowArrangements = arrangementsOn(tomorrow); document.querySelector("#today-label").textContent = formatFullDate(now); document.querySelector("#today-count").textContent = `${todayArrangements.length} 项`; document.querySelector("#tomorrow-date").textContent = `${formatShortDate(tomorrow)} ${WEEKDAYS[tomorrow.getDay()]}`; renderStatus(now, todayArrangements); renderTodayOverview(document.querySelector("#today-list"), todayArrangements); renderCourseList(document.querySelector("#tomorrow-list"), tomorrowArrangements, "明天没有安排", "目前没有查到明日课程或自习安排。"); renderWeek(now); renderAdjustments(now); const updated = new Date(scheduleData.lastUpdated); document.querySelector("#last-updated").textContent = `${updated.getFullYear()}年${updated.getMonth() + 1}月${updated.getDate()}日 ${pad(updated.getHours())}:${pad(updated.getMinutes())}`;
+}
+function startLiveUpdates(clock, initialNow) {
   let renderedDateKey = toDateKey(initialNow);
   const refresh = () => {
-    const now = resolveNow(); const currentDateKey = toDateKey(now);
+    const now = clock.current(); const currentDateKey = toDateKey(now);
     if (currentDateKey !== renderedDateKey) { renderDashboard(now); renderedDateKey = currentDateKey; return; }
-    renderStatus(now, coursesOn(now));
+    renderStatus(now, arrangementsOn(now));
   };
-  window.setInterval(refresh, 60_000);
+  window.setInterval(refresh, clock.refreshInterval);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
 }
 async function init() {
-  try { await loadScheduleData(); } catch (error) { scheduleData = FALLBACK_DATA; console.warn("Using built-in schedule data because external data files are unavailable.", error); } const now = resolveNow(); renderDashboard(now); startLiveUpdates(now);
+  try { await loadScheduleData(); } catch (error) { scheduleData = FALLBACK_DATA; console.warn("Using built-in schedule data because external data files are unavailable.", error); } const clock = createClock({ hostname: window.location.hostname, search: window.location.search }); const now = clock.current(); renderDashboard(now); startLiveUpdates(clock, now);
 }
 if (typeof document !== "undefined") init();
-export { getStatusState, getWeekStart, normalizeCourse, normalizeCourses, parseCsv, toDateKey };
+export { arrangementsOn, createClock, getStatusState, getStudySessions, getWeekStart, normalizeCourse, normalizeCourses, parseCsv, toDateKey };

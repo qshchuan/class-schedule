@@ -16,12 +16,23 @@ python -m http.server 4173
 
 你不需要打开 CSV 或登录 GitHub 上传文件。固定流程如下：
 
-1. 每周六或周日，在原来的 Codex 对话中发送下一周课程详情截图。
+1. 每周六或周日，在任意 Codex 对话中发送下一周课程详情截图。
 2. 说一句“更新下周课表”。
 3. Codex 会识别蓝色日期、课程、时间、教室和教师，更新数据并检查手机页面。
 4. Codex 完成 GitHub 推送后，会回复本次更新内容和网站链接。
 
 周六、周日默认不上课，除非截图或消息明确说明有特殊安排。完整规则见 `WEEKLY_UPDATE_WORKFLOW.md`。
+
+新窗口可直接使用这句话：
+
+> 打开 `C:\Users\ll\Documents\ChatGPT\抢课`，按 `WEEKLY_UPDATE_WORKFLOW.md` 识别我上传的图片、更新下周课表、完成检查并发布。
+
+发布前固定运行：
+
+```powershell
+npm run validate
+npm test
+```
 
 ## 课程数据文件（通常无需手动修改）
 

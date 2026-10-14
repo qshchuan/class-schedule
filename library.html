@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#315f92" />
+    <meta name="description" content="图书馆各楼层实时开放状态与开放时间" />
+    <title>图书馆开放时间</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./library.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero__content">
+          <p class="eyebrow">LIBRARY HOURS</p>
+          <h1>图书馆开放时间</h1>
+          <p id="current-date" class="hero__date"></p>
+
+          <section class="now-panel" aria-labelledby="now-heading" aria-live="polite">
+            <div class="now-panel__heading">
+              <div>
+                <p class="now-panel__label">当前开放</p>
+                <h2 id="now-heading">正在查询...</h2>
+              </div>
+              <time id="current-time" class="clock">--:--</time>
+            </div>
+            <div id="open-now-list" class="open-now-list"></div>
+            <p id="next-change" class="next-change"></p>
+          </section>
+        </div>
+      </header>
+
+      <main>
+        <section class="walk-in" aria-label="入馆提示">
+          <span class="walk-in__icon" aria-hidden="true">✓</span>
+          <div>
+            <strong>无需预约，直接入座</strong>
+            <p>有空位即可使用，请遵守各区域管理规定。</p>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="spaces-heading">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">ALL SPACES</p>
+              <h2 id="spaces-heading">各区域开放时间</h2>
+            </div>
+            <span class="time-badge">24 小时制</span>
+          </div>
+          <div id="space-list" class="space-list"></div>
+        </section>
+
+        <section class="section weekly-section" aria-labelledby="weekly-heading">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">WEEKLY HOURS</p>
+              <h2 id="weekly-heading">3楼借阅室周时间表</h2>
+            </div>
+          </div>
+          <div id="week-tabs" class="week-tabs" role="tablist" aria-label="选择星期"></div>
+          <div id="week-detail" class="week-detail"></div>
+        </section>
+
+        <section class="section quiet-guide" aria-labelledby="guide-heading">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">FLOOR GUIDE</p>
+              <h2 id="guide-heading">楼层使用提示</h2>
+            </div>
+          </div>
+          <div class="guide-row">
+            <span class="floor-number">5F</span>
+            <div>
+              <strong>可大声背单词</strong>
+              <p>需要开口记忆时，请前往5楼。每日 07:30–22:30 开放。</p>
+            </div>
+          </div>
+          <div class="guide-row">
+            <span class="floor-number floor-number--blue">3F</span>
+            <div>
+              <strong>晚间仅提供阅读服务</strong>
+              <p>18:30–21:30 不办理图书借还。</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>开放安排如有临时调整，请以图书馆现场通知为准。</p>
+      </footer>
+    </div>
+
+    <script type="module" src="./library.js"></script>
+  </body>
+</html>
